@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор смолы Genshin Impact</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input[type="number"],
+        input[type="datetime-local"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="number"]:focus,
+        input[type="datetime-local"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-bottom: 20px;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .result {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            color: white;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .resin-amount {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+
+        .resin-label {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        .info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .warning {
+            color: #f5576c;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .detail {
+            margin-top: 15px;
+            font-size: 14px;
+            opacity: 0.95;
+        }
+
+        .cap-warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚗️ Калькулятор смолы</h1>
+        <p class="subtitle">Genshin Impact</p>
+
+        <div class="input-group">
+            <label for="currentResin">Текущая смола (0-200)</label>
+            <input type="number" id="currentResin" min="0" max="200" value="0" placeholder="Введите текущую смолу">
+            <span class="warning" id="resinWarning"></span>
+        </div>
+
+        <div class="input-group">
+            <label for="lastTime">Время выхода из игры</label>
+            <input type="datetime-local" id="lastTime">
+        </div>
+
+        <button class="button" onclick="calculateResin()">Рассчитать смолу</button>
+
+        <div class="result" id="result">
+            <div class="resin-label">Накопленная смола:</div>
+            <div class="resin-amount" id="resinAmount">0</div>
+            <div class="detail" id="details"></div>
+            <div class="cap-warning" id="capWarning" style="display: none;"></div>
+        </div>
+
+        <div class="info">
+            <strong>ℹ️ Информация:</strong><br>
+            • 1 смола восстанавливается за 8 минут<br>
+            • Максимум: 200 смолы<br>
+            • Полное восстановление: 26 часов 40 минут<br>
+            • Восстановление в день: 180 смолы
+        </div>
+    </div>
+
+    <script>
+        // Установить текущее время при загрузке
+        window.onload = function() {
+            const now = new Date();
+            const offset = now.getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(now - offset)).toISOString().slice(0, 16);
+            document.getElementById('lastTime').value = localISOTime;
+        };
+
+        // Валидация ввода смолы
+        document.getElementById('currentResin').addEventListener('input', function() {
+            const value = parseInt(this.value);
+            const warning = document.getElementById('resinWarning');
+            
+            if (value < 0) {
+                this.value = 0;
+                warning.textContent = 'Минимум: 0 смолы';
+            } else if (value > 200) {
+                this.value = 200;
+                warning.textContent = 'Максимум: 200 смолы';
+            } else {
+                warning.textContent = '';
+            }
+        });
+
+        function calculateResin() {
+            const currentResin = parseInt(document.getElementById('currentResin').value);
+            const lastTimeStr = document.getElementById('lastTime').value;
+
+            // Валидация
+            if (isNaN(currentResin) || currentResin < 0 || currentResin > 200) {
+                alert('Пожалуйста, введите корректное значение смолы (0-200)');
+                return;
+            }
+
+            if (!lastTimeStr) {
+                alert('Пожалуйста, укажите время выхода из игры');
+                return;
+            }
+
+            const lastTime = new Date(lastTimeStr);
+            const now = new Date();
+
+            // Проверка что время в прошлом
+            if (lastTime > now) {
+                alert('Время выхода не может быть в будущем!');
+                return;
+            }
+
+            // Расчет прошедшего времени в минутах
+            const timeDiffMs = now - lastTime;
+            const timeDiffMinutes = Math.floor(timeDiffMs / 60000);
+
+            // Расчет накопленной смолы (1 смола = 8 минут)
+            const resinGenerated = Math.floor(timeDiffMinutes / 8);
+            
+            // Итоговая смола с учетом максимума
+            let totalResin = currentResin + resinGenerated;
+            let isCapped = false;
+            let timeWasted = 0;
+
+            if (totalResin > 200) {
+                // Рассчитать время когда достигли капа
+                const resinToCapFromStart = 200 - currentResin;
+                const minutesToCap = resinToCapFromStart * 8;
+                timeWasted = timeDiffMinutes - minutesToCap;
+                totalResin = 200;
+                isCapped = true;
+            }
+
+            // Форматирование времени
+            const hours = Math.floor(timeDiffMinutes / 60);
+            const minutes = timeDiffMinutes % 60;
+            const timeStr = `${hours} ч ${minutes} мин`;
+
+            // Отображение результата
+            document.getElementById('resinAmount').textContent = totalResin;
+            
+            let detailsText = `Прошло времени: ${timeStr}<br>`;
+            detailsText += `Восстановлено: +${resinGenerated} смолы`;
+
+            document.getElementById('details').innerHTML = detailsText;
+
+            // Предупреждение о достижении капа
+            const capWarning = document.getElementById('capWarning');
+            if (isCapped) {
+                const wastedHours = Math.floor(timeWasted / 60);
+                const wastedMinutes = timeWasted % 60;
+                const wastedResin = Math.floor(timeWasted / 8);
+                
+                capWarning.style.display = 'block';
+                capWarning.innerHTML = `⚠️ Достигнут лимит! Потеряно ~${wastedResin} смолы (${wastedHours} ч ${wastedMinutes} мин после достижения капа)`;
+            } else {
+                capWarning.style.display = 'none';
+            }
+
+            // Показать результат с анимацией
+            const resultDiv = document.getElementById('result');
+            resultDiv.classList.remove('show');
+            setTimeout(() => {
+                resultDiv.classList.add('show');
+            }, 10);
+        }
+
+        // Возможность расчета по Enter
+        document.getElementById('currentResin').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') calculateResin();
+        });
+    </script>
+</body>
+</html>
